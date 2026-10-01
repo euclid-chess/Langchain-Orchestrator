@@ -2,6 +2,8 @@
 
 A single FastAPI `POST /ask` endpoint that routes questions with LangChain and streams answers as Server-Sent Events (SSE).
 
+For copyable setup, request, testing, and troubleshooting instructions, see [GUIDE.md](GUIDE.md).
+
 ## Behavior
 
 - Basic arithmetic (`12 * (5 + 3)`) is calculated locally with a restricted, bounded parser. It makes no LLM request.
@@ -18,7 +20,7 @@ The router uses LangChain `RunnableBranch`; the LLM chains use `ChatPromptTempla
 Python 3.10+ is required.
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv  # Or use another Python 3.10+ interpreter.
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
 export OPENAI_API_KEY='your-key-from-your-provider'
