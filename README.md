@@ -15,6 +15,24 @@ For copyable setup, request, testing, and troubleshooting instructions, see [GUI
 The router uses LangChain `RunnableBranch`; the LLM chains use `ChatPromptTemplate`, a chat model, and `StrOutputParser`. FastAPI's `EventSourceResponse` is a `StreamingResponse` subclass and emits valid SSE, including keepalive comments.
 `/ask` is the only application route; the automatic documentation routes are disabled.
 
+## Routing and performance choices
+
+**Local, rule-based routing avoids a classification-model request.** LangChain's outer `RunnableBranch` checks whether the query looks mathematical; its math branch then checks whether the *whole query* is a supported arithmetic expression. The decisions are, in order:
+
+1. A complete expression such as `12 * (5 + 3)` or `What is 12 * (5 + 3)?` goes to the local calculator.
+2. Other queries containing math terms (for example, `Explain calculus`), calculation words paired with digits or written-out numbers (for example, `What is seven times eight?`), or a numeric operator go to the math-tutor prompt and LLM.
+3. Everything else goes to the general prompt and LLM. `Add this book to my reading list` is general: the word “add” alone is not enough to classify it as math.
+
+These checks use a bounded expression parser and case-insensitive regular expressions, not semantic understanding. They are cheap and deterministic, but ambiguous wording can choose the wrong prompt. Written-out arithmetic is routed to the math LLM, not evaluated locally. See `is_math_query` and `is_direct_calculation` in [`app/routing.py`](app/routing.py).
+
+**The local calculator avoids an LLM request for supported arithmetic.** It parses an expression into a Python syntax tree, evaluates only approved arithmetic nodes with `Decimal`, and never executes user-supplied Python. Limits on expression length, tree size, nesting, exponents, and value magnitude bound the work. This path is narrower than general math reasoning: an unsupported word problem still needs the LLM. The current router parses a direct expression more than once; with the small input limit this is minor overhead, not a claimed optimal parser implementation.
+
+**The model and router are built once at startup.** Both LLM paths reuse the configured LangChain model object rather than rebuilding it per request. This avoids repeated setup in the application, but does not necessarily warm a provider connection or eliminate network latency. Each path uses a short, task-specific system prompt plus the user's query, keeping prompt overhead modest without claiming a measured saving.
+
+**Asynchronous SSE streaming reduces time to visible output.** The endpoint iterates over `router.astream(...)` and yields each nonempty chunk through `EventSourceResponse` as a `token` event, then emits `done`. It does not wait to assemble the whole answer. A chunk need not equal one model token, and the benefit depends on a provider that truly streams; streaming does not necessarily reduce the time to *finish* the answer. Awaiting an asynchronous provider also lets the server handle other work while a response is in progress. The 2,000-character query limit bounds input processing and prompt size, but is not a model-token cap.
+
+These are design choices, not benchmark results. Measure first-chunk latency, total latency, and concurrent-request behavior with the intended provider and deployment before making speed claims or adding a more complex classifier.
+
 ## Run locally
 
 Python 3.10+ is required. This example selects OpenAI; see [GUIDE.md](GUIDE.md) for a local Ollama example and other providers.
