@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -12,9 +11,9 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.sse import EventSourceResponse, ServerSentEvent
 from langchain_core.runnables import Runnable
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.models import load_model
 from app.routing import build_router
 
 logger = logging.getLogger(__name__)
@@ -35,23 +34,11 @@ class AskRequest(BaseModel):
 
 
 def create_app(model: Runnable[Any, Any] | None = None) -> FastAPI:
-    """Create the app, optionally injecting a model for key-free tests."""
+    """Create the app, optionally injecting any compatible streaming model."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        selected_model = model
-        if selected_model is None:
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                raise RuntimeError("OPENAI_API_KEY must be set before starting the app")
-            selected_model = ChatOpenAI(
-                model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-                api_key=api_key,
-                streaming=True,
-                max_tokens=512,
-                timeout=30,
-                max_retries=1,
-            )
+        selected_model = model if model is not None else load_model()
         app.state.router = build_router(selected_model)
         yield
 
