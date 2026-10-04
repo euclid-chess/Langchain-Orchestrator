@@ -6,13 +6,13 @@ This guide covers the project as it is currently implemented. The service accept
 
 You need Python 3.10 or newer, `pip`, `curl`, and an OpenAI API key for **live** requests. A live LLM request needs network access and may cost money. The automated tests use a fake model and need neither a key nor provider access.
 
-Open a terminal in the repository:
+Open a terminal in the repository folder. If you are elsewhere, change to the path where **you** saved it; for example:
 
 ```bash
 cd /path/to/langorchestrator
 ```
 
-This workspace already has an ignored `.venv`. Activate it and install the project and test dependencies:
+If a `.venv` already exists, activate it and install the project and test dependencies:
 
 ```bash
 source .venv/bin/activate
@@ -26,7 +26,7 @@ If `.venv` is missing, create it first with a Python 3.10+ interpreter, then run
 python3.12 -m venv .venv
 ```
 
-On this particular Mac, the default `python3` is Python 3.8 and is **too old**; the existing `.venv` uses Python 3.12. Do not recreate it with the default `python3` unless `python3 --version` reports 3.10 or newer.
+Check the interpreter's version before creating a virtual environment. Some systems still use a Python older than 3.10 for the `python3` command.
 
 ## 2. Supply the key and start the server
 
